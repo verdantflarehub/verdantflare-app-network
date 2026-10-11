@@ -108,3 +108,59 @@ func TestServiceAndLiveAuthorityRequired(t *testing.T) {
 		t.Fatal("explicit empty optional H1 fields lost compatibility")
 	}
 }
+
+func TestInvalidEnvelopeRejectedBeforeAuthority(t *testing.T) {
+	user, org, station := uuid.NewString(), uuid.NewString(), uuid.NewString()
+	token := "Bearer " + strings.Repeat("s", 32)
+	cases := []struct {
+		name   string
+		mutate func(*http.Request)
+		status int
+	}{
+		{"duplicate service credential", func(r *http.Request) { r.Header.Add("Authorization", token) }, http.StatusUnauthorized},
+		{"conflicting service credential", func(r *http.Request) { r.Header.Add("Authorization", "Bearer other") }, http.StatusUnauthorized},
+		{"duplicate user", func(r *http.Request) { r.Header.Add("X-User-Id", user) }, http.StatusForbidden},
+		{"conflicting organization", func(r *http.Request) { r.Header.Add("X-Organization-Id", uuid.NewString()) }, http.StatusForbidden},
+		{"duplicate station", func(r *http.Request) { r.Header.Add("X-Station-Id", station) }, http.StatusForbidden},
+		{"missing user", func(r *http.Request) { r.Header.Del("X-User-Id") }, http.StatusForbidden},
+		{"empty query", func(r *http.Request) { r.URL.ForceQuery = true }, http.StatusBadRequest},
+		{"query", func(r *http.Request) { r.URL.RawQuery = "extra=1" }, http.StatusBadRequest},
+		{"encoded path", func(r *http.Request) { r.URL.RawPath = "/api/v1/%70roxies" }, http.StatusBadRequest},
+		{"compressed body", func(r *http.Request) { r.Header.Set("Content-Encoding", "gzip") }, http.StatusBadRequest},
+		{"empty content encoding", func(r *http.Request) { r.Header.Set("Content-Encoding", "") }, http.StatusBadRequest},
+		{"compressed body after empty header", func(r *http.Request) {
+			r.Header.Set("Content-Encoding", "")
+			r.Header.Add("Content-Encoding", "gzip")
+		}, http.StatusBadRequest},
+	}
+	for _, route := range []string{"/api/v1/proxies", "/internal/dashboard/declaration"} {
+		for _, tc := range cases {
+			t.Run(route+"/"+tc.name, func(t *testing.T) {
+				calls := 0
+				m := &management{}
+				verify := verifyFunc(func(_ context.Context, _ identity.Actor, rid string) (identity.IdentityContext, error) {
+					calls++
+					return identity.IdentityContext{UserID: user, OrganizationID: org, StationID: station, RequestID: rid, Roles: []string{"admin"}, Scopes: []string{"app:manage"}}, nil
+				})
+				s, err := New(verify, m, nil, strings.TrimPrefix(token, "Bearer "))
+				if err != nil {
+					t.Fatal(err)
+				}
+				r := httptest.NewRequest(http.MethodGet, route, nil)
+				r.Header.Set("Authorization", token)
+				r.Header.Set("X-User-Id", user)
+				r.Header.Set("X-Organization-Id", org)
+				r.Header.Set("X-Station-Id", station)
+				tc.mutate(r)
+				w := httptest.NewRecorder()
+				s.ServeHTTP(w, r)
+				if w.Code != tc.status {
+					t.Fatalf("status = %d, want %d; authority calls = %d, business calls = %d", w.Code, tc.status, calls, m.calls)
+				}
+				if calls != 0 || m.calls != 0 {
+					t.Fatalf("invalid envelope reached authority (%d) or business (%d)", calls, m.calls)
+				}
+			})
+		}
+	}
+}

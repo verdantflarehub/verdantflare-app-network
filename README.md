@@ -1,6 +1,6 @@
 # verdantflare-app-network
 
-VerdantFlare AppCenter 网络出口应用，版本 `0.1.0`。Dashboard 与 Go 业务服务同容器交付，前端仅消费 AppSDK 1.1，不包含 Studio 私有组件或 Wails bindings。
+VerdantFlare AppCenter 网络出口应用，当前版本见 [VERSION](VERSION)。Dashboard 与 Go 业务服务同容器交付，前端仅消费 AppSDK 1.1，不包含 Studio 私有组件或 Wails bindings。
 
 ## 1. 实现入口
 
@@ -30,7 +30,7 @@ VerdantFlare AppCenter 网络出口应用，版本 `0.1.0`。Dashboard 与 Go �
 
 ## 3. 构建与检查
 
-`release` 分支的 Actions 构建前端、Go 二进制和容器，发布不可覆盖的 `network-v0.1.0` 镜像。Dockerfile 使用独立前端构建阶段，镜像不含 Node、编译器或源码工具。
+`release` 分支的 Actions 从 `VERSION` 读取发行版本，构建前端、Go 二进制和容器，发布不可覆盖的 `network-v<版本>` 镜像。Dashboard 与导航声明也从该文件读取版本；前端包元数据和 Go 本地版本默认值随发行同步。Dockerfile 使用独立前端构建阶段，镜像不含 Node、编译器或源码工具。
 
 允许的本机纯单元／静态检查：
 

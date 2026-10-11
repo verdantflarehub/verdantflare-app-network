@@ -59,8 +59,18 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 	w.Header().Set("X-Request-ID", id)
 	provided := sha256.Sum256([]byte(bearer(r.Header.Get("Authorization"))))
-	if subtle.ConstantTimeCompare(provided[:], s.tokenHash[:]) != 1 {
+	if len(r.Header.Values("Authorization")) != 1 || subtle.ConstantTimeCompare(provided[:], s.tokenHash[:]) != 1 {
 		failure(w, id, identity.Unauthenticated)
+		return
+	}
+	for _, header := range []string{"X-User-Id", "X-Organization-Id", "X-Station-Id"} {
+		if len(r.Header.Values(header)) != 1 {
+			failure(w, id, identity.Denied)
+			return
+		}
+	}
+	if r.URL.RawQuery != "" || r.URL.ForceQuery || r.URL.RawPath != "" || len(r.Header.Values("Content-Encoding")) != 0 {
+		failure(w, id, identity.Invalid)
 		return
 	}
 	ctx, cancel := context.WithTimeout(r.Context(), 55*time.Second)
@@ -73,10 +83,6 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	// Authorize assets too: loading a navigation entry is not a grant.
 	if err = egress.Authorize(actor); err != nil {
 		failure(w, id, err)
-		return
-	}
-	if r.URL.RawQuery != "" || r.URL.RawPath != "" {
-		failure(w, id, identity.Invalid)
 		return
 	}
 	if strings.HasPrefix(r.URL.Path, "/internal/dashboard/") {
