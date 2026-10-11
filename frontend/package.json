@@ -1,0 +1,13 @@
+{
+  "name": "verdantflare-app-network-dashboard",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "vite build && node scripts/package-dashboard.mjs",
+    "typecheck": "vue-tsc --noEmit",
+    "test": "node --experimental-transform-types --test tests/*.test.ts"
+  },
+  "dependencies": { "vue": "3.5.30", "flag-icons": "7.5.0" },
+  "devDependencies": { "vite": "7.3.1", "@vitejs/plugin-vue": "6.0.4", "typescript": "5.9.3", "vue-tsc": "3.2.5" }
+}

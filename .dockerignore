@@ -1,0 +1,10 @@
+.git
+.github
+frontend/node_modules
+frontend/dist
+frontend/tests
+**/*_test.go
+.env*
+*.md
+coverage.out
+release/
