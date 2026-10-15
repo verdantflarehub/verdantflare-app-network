@@ -155,19 +155,30 @@ function openImport() {
   modal.value = "import";
 }
 let listScroll = 0;
+let listFocus = "";
 function openDetail(id: string) {
-  listScroll = window.scrollY;
+  listScroll = host().dashboardHost.getScroll?.() ?? window.scrollY;
+  listFocus = id;
   menuID.value = "";
   drawerID.value = id;
-  void nextTick(() =>
-    document.querySelector<HTMLElement>(".detail-heading h1")?.focus(),
-  );
+  void nextTick(() => {
+    document.querySelector<HTMLElement>(".detail-heading h1")?.focus({ preventScroll: true });
+    const bridge = host().dashboardHost;
+    if (bridge.restoreScroll) bridge.restoreScroll(0);
+    else window.scrollTo(0, 0);
+  });
 }
 function returnToList() {
   drawerID.value = "";
   void nextTick(() => {
-    window.scrollTo(0, listScroll);
-    document.querySelector<HTMLElement>(".proxy-name")?.focus();
+    const index = visibleRows.value.findIndex(row => row.proxy_id === listFocus);
+    document.querySelectorAll<HTMLElement>(".proxy-name")[Math.max(index, 0)]?.focus({ preventScroll: true });
+    requestAnimationFrame(() => requestAnimationFrame(() => {
+      if (drawerID.value || !isActive()) return;
+      const bridge = host().dashboardHost;
+      if (bridge.restoreScroll) bridge.restoreScroll(listScroll);
+      else window.scrollTo(0, listScroll);
+    }));
   });
 }
 
@@ -559,7 +570,7 @@ watch(
   { flush: "sync" },
 );
 watch(
-  [modal, saving, importText, () => JSON.stringify(form)],
+  [modal, saving, importText, authMode, () => JSON.stringify(form)],
   () =>
     host().dashboardHost.setDirty(
       saving.value ||

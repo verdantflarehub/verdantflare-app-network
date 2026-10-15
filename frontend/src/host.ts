@@ -9,7 +9,7 @@ export interface Host {
     theme: { get(): 'light' | 'dark'; subscribe(listener: (theme: 'light' | 'dark') => void): () => void }
     navigation: { get(): { path: string; revision: number }; subscribe(listener: (route: { path: string; revision: number }) => void): () => void; request(input: { path: string; target: 'app' | 'appcenter' }): Promise<void> }
   }
-  dashboardHost: { ready(): void; setDirty(value: boolean): void; resize(height: number): void }
+  dashboardHost: { ready(): void; setDirty(value: boolean): void; resize(height: number): void; getScroll?(): number; restoreScroll?(top: number): void }
 }
 let current: Host | undefined
 let state: Lifecycle = 'dispose'
