@@ -156,6 +156,17 @@ function openImport() {
 }
 let listScroll = 0;
 let listFocus = "";
+let pendingScroll: number | null = null;
+function restoreViewScroll(top: number) {
+  pendingScroll = top;
+  requestAnimationFrame(() => requestAnimationFrame(() => {
+    if (pendingScroll === null || !isActive()) return;
+    const bridge = host().dashboardHost;
+    if (bridge.restoreScroll) bridge.restoreScroll(pendingScroll);
+    else window.scrollTo(0, pendingScroll);
+    pendingScroll = null;
+  }));
+}
 function openDetail(id: string) {
   listScroll = host().dashboardHost.getScroll?.() ?? window.scrollY;
   listFocus = id;
@@ -163,9 +174,7 @@ function openDetail(id: string) {
   drawerID.value = id;
   void nextTick(() => {
     document.querySelector<HTMLElement>(".detail-heading h1")?.focus({ preventScroll: true });
-    const bridge = host().dashboardHost;
-    if (bridge.restoreScroll) bridge.restoreScroll(0);
-    else window.scrollTo(0, 0);
+    restoreViewScroll(0);
   });
 }
 function returnToList() {
@@ -173,12 +182,7 @@ function returnToList() {
   void nextTick(() => {
     const index = visibleRows.value.findIndex(row => row.proxy_id === listFocus);
     document.querySelectorAll<HTMLElement>(".proxy-name")[Math.max(index, 0)]?.focus({ preventScroll: true });
-    requestAnimationFrame(() => requestAnimationFrame(() => {
-      if (drawerID.value || !isActive()) return;
-      const bridge = host().dashboardHost;
-      if (bridge.restoreScroll) bridge.restoreScroll(listScroll);
-      else window.scrollTo(0, listScroll);
-    }));
+    restoreViewScroll(listScroll);
   });
 }
 
@@ -537,7 +541,10 @@ onMounted(() => {
   unsubscribeRoute = host().appSDK.navigation.subscribe(applyRoute);
   void refresh();
   unsubscribe = subscribeLifecycle((event) => {
-    if (event === "active") void refresh();
+    if (event === "active") {
+      void refresh();
+      if (pendingScroll !== null) restoreViewScroll(pendingScroll);
+    }
     else {
       loadGeneration++;
       loading.value = false;
@@ -545,6 +552,7 @@ onMounted(() => {
   });
 });
 onUnmounted(() => {
+  pendingScroll = null;
   document.removeEventListener("keydown", keydown);
   document.body.style.overflow = "";
   unsubscribe();
