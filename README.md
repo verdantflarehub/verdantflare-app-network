@@ -25,6 +25,7 @@ VerdantFlare AppCenter 网络出口应用，当前版本见 [VERSION](VERSION)�
 - `NETWORK_STUDIO_TOKEN`：Studio 访问本应用的专属服务凭据。
 - `NETWORK_DASHBOARD_DIR`：默认 `/app/dashboard`；启动时校验版本、摘要及全部资源字节。
 - `NETWORK_LISTEN_ADDR`：默认 `:8080`。
+- `NETWORK_CHANNEL_CONSUMERS_FILE`：可选的受控只读渠道授权配置；缺省不开放渠道代理解析。配置仅含 `schema_version=1`、`grants`，每项记录 `app_id`、`organization_id`、既有 `proxy_ids` 和 `token_env`。令牌环境变量使用 `NETWORK_CHANNEL_<渠道>_TOKEN`，独立于 Studio 管理令牌，不在配置文件写真实值。仅开放内部列表和指定修订解析，不写 H2 指派或代理表；接口与权限以设计仓库的 `channel-provider-v1.md` 第 8.1 节为准。此源码接线尚未发布或完成集群验收。
 
 凭据不通过页面配置、URL 查询参数或业务错误返回。服务仅供受控内部访问；不提供独立公网 MCP。
 

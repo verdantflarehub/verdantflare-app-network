@@ -47,6 +47,35 @@ func inputFrom(p Endpoint) Input {
 	}
 	return Input{Name: p.Name, Protocol: p.Protocol, Host: p.Host, Port: p.Port, Tag: p.Tag, Note: p.Note, ExpiresAt: expiry, Revision: p.Revision}
 }
+
+func TestConsumerReadPreservesOwnerAndOrganizationBoundary(t *testing.T) {
+	s, actor := serviceFixture(t)
+	user, password := "fixture-consumer", "fixture-password"
+	p, err := s.Save(t.Context(), actor, "", Input{Name: "Consumer fixture", Protocol: "socks5h", Host: "proxy.example.invalid", Port: 1080, Username: &user, Password: &password})
+	if err != nil {
+		t.Fatal(err)
+	}
+	got, err := s.ReadConsumerProxy(t.Context(), actor.OrganizationID, p.ID)
+	if err != nil || got.ID != p.ID || got.Auth.Username != user || got.Auth.Password != password {
+		t.Fatal("authorized resolution failed")
+	}
+	public, _ := json.Marshal(got)
+	if bytes.Contains(public, []byte(password)) || bytes.Contains(public, []byte(user)) {
+		t.Fatal("implicit credential projection")
+	}
+	if _, err = s.ReadConsumerProxy(t.Context(), uuid.NewString(), p.ID); !errors.Is(err, ErrNotFound) {
+		t.Fatal("foreign organization resolved")
+	}
+	other := *s
+	other.StationID = uuid.NewString()
+	if _, err = other.ReadConsumerProxy(t.Context(), actor.OrganizationID, p.ID); !errors.Is(err, ErrNotFound) {
+		t.Fatal("foreign station resolved")
+	}
+	after, err := s.Get(t.Context(), actor, p.ID)
+	if err != nil || after.Revision != p.Revision || len(after.AssignedApps) != 0 {
+		t.Fatal("read changed resource or assignment")
+	}
+}
 func TestPersistenceSecretsIsolationAndReferences(t *testing.T) {
 	s, u := serviceFixture(t)
 	ctx := t.Context()

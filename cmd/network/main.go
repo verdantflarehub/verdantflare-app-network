@@ -97,6 +97,17 @@ func run() error {
 	if err != nil {
 		return err
 	}
+	if consumerFile := os.Getenv("NETWORK_CHANNEL_CONSUMERS_FILE"); consumerFile != "" {
+		file, err := os.Open(consumerFile)
+		if err != nil {
+			return errors.New("channel proxy configuration unavailable")
+		}
+		handler.Consumers, err = transport.NewConsumers(file, os.Getenv, management, os.Getenv("NETWORK_STUDIO_TOKEN"))
+		file.Close()
+		if err != nil {
+			return err
+		}
+	}
 	address := os.Getenv("NETWORK_LISTEN_ADDR")
 	if address == "" {
 		address = ":8080"

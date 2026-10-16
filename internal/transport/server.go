@@ -32,13 +32,14 @@ type Server struct {
 	Egress    Management
 	Assets    *dashboard.Assets
 	tokenHash [32]byte
+	Consumers *Consumers
 }
 
 func New(verifier identity.Verifier, management Management, assets *dashboard.Assets, serviceToken string) (*Server, error) {
 	if verifier == nil || management == nil || len(serviceToken) < 32 || strings.ContainsAny(serviceToken, " \t\r\n") {
 		return nil, errors.New("invalid network service configuration")
 	}
-	return &Server{verifier, management, assets, sha256.Sum256([]byte(serviceToken))}, nil
+	return &Server{Identity: verifier, Egress: management, Assets: assets, tokenHash: sha256.Sum256([]byte(serviceToken))}, nil
 }
 func bearer(value string) string {
 	if !strings.HasPrefix(value, "Bearer ") {
@@ -51,6 +52,10 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Cache-Control", "no-store")
 	if r.URL.Path == "/healthz" && r.Method == "GET" {
 		reply(w, 200, map[string]string{"status": "ready"})
+		return
+	}
+	if strings.HasPrefix(r.URL.Path, consumerBase) && s.Consumers != nil {
+		s.Consumers.ServeHTTP(w, r)
 		return
 	}
 	id := r.Header.Get("X-Request-ID")
