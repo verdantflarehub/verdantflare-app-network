@@ -59,7 +59,7 @@ func NewConsumers(config io.Reader, lookup func(string) string, store ConsumerSt
 	out := &Consumers{store: store}
 	studioHash := sha256.Sum256([]byte(studioToken))
 	for _, grant := range in.Grants {
-		if !slices.Contains([]string{"fal", "google", "grok", "chatgpt"}, grant.AppID) || !canonicalID(grant.OrganizationID) || len(grant.ProxyIDs) == 0 || len(grant.ProxyIDs) > 128 || !regexp.MustCompile(`^NETWORK_CHANNEL_[A-Z][A-Z0-9_]*_TOKEN$`).MatchString(grant.TokenEnv) {
+		if !slices.Contains([]string{"fal", "google", "grok", "chatgpt", "google-flow"}, grant.AppID) || !canonicalID(grant.OrganizationID) || len(grant.ProxyIDs) == 0 || len(grant.ProxyIDs) > 128 || !regexp.MustCompile(`^NETWORK_CHANNEL_[A-Z][A-Z0-9_]*_TOKEN$`).MatchString(grant.TokenEnv) {
 			return nil, invalid
 		}
 		seen := map[string]bool{}
